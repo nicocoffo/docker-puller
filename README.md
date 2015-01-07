@@ -18,6 +18,8 @@ Example web hook
 
 In docker.io setup a web hook with an URL like this: https://myserver.com/dockerpuller?token=abc123&hook=myhook1
 
+The hook parameter can be skipped, triggering a hook according to the container name, eg. a webhook from 'namespace/name' would trigger the hook called 'name'. 
+
 Example docker-puller configuration
 ===================================
 
