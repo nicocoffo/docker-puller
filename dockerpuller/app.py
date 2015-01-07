@@ -3,32 +3,48 @@ from flask import request
 from flask import jsonify
 import json
 import subprocess
+import requests
 
 app = Flask(__name__)
 config = None
 
 @app.route('/', methods=['POST'])
 def hook_listen():
-    if request.method == 'POST':
-        token = request.args.get('token')
-        if token == config['token']:
-            hook = request.args.get('hook')
+    # Verify token 
+    if request.args.get('token') == config['token']:
+        hook = request.args.get('hook')
+        data = request.json
+        callback = None
 
-            if hook:
-                hook_value = config['hooks'].get(hook)
+        # Get callback url and container name, if no hook was provided
+        if request.json:
+            callback = data.get('callback_url')
+            if not hook and data.get('repository'):
+                hook = data['repository'].get('name')
 
-                if hook_value:
-                    try:
-                        subprocess.call(hook_value)
-                        return jsonify(success=True), 200
-                    except OSError as e:
-                        return jsonify(success=False, error=str(e)), 400
-                else:
-                    return jsonify(success=False, error="Hook not found"), 404
+        # Call hook, if it exists
+        if hook:
+            hook_value = config['hooks'].get(hook)
+            if hook_value:
+                try:
+                    subprocess.call(hook_value)
+                    complete_callback(callback, 'success')
+                    return jsonify(success=True), 200
+                except OSError as e:
+                    complete_callback(callback, 'failure')
+                    return jsonify(success=False, error=str(e)), 400
             else:
-                return jsonify(success=False, error="Invalid request: missing hook"), 400
+                complete_callback(callback, 'error')
+                return jsonify(success=False, error="Hook not found"), 404
         else:
-            return jsonify(success=False, error="Invalid token"), 400
+            complete_callback(callback, 'error')
+            return jsonify(success=False, error="Invalid request: missing hook"), 400
+    else:
+        return jsonify(success=False, error="Invalid token"), 400
+
+def complete_callback(callback, result):
+    if callback:
+        requests.post(callback, data=json.dumps({'state':result}))
 
 def load_config():
     with open('config.json') as config_file:    
