@@ -47,7 +47,7 @@ def complete_callback(callback, result):
         requests.post(callback, data=json.dumps({'state':result}))
 
 def load_config():
-    with open('config.json') as config_file:    
+    with open('/etc/conf.d/docker-puller') as config_file:    
         return json.load(config_file)
 
 if __name__ == '__main__':
